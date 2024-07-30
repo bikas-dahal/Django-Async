@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Person</title>
+    <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+</head>
+<body>
+    <header>
+        <button>Back</button>
+        <div>
+            <img src="{% static 'app/face.png' %}" alt="Person's Face">
+            <p>{{user.username}}</p>
+        </div>
+        <p class="name-of-sender">Me: {{me.username}}</p>
+    </header>
+
+    <main id="messages-area">
+        <section class="to">
+            <div class="details">
+                <p>2024-01-30</p>
+                <div class="status">
+                    <div></div><div></div>
+                </div>
+                <p>10:55:02</p>
+            </div>
+            <div class="message">
+                <p style="overflow-wrap: anywhere;">Message from you</p>
+            </div>
+        </section>
+
+        <section class="from">
+            <div class="details">
+                <p>2024-01-30</p>
+                <p>10:55:02</p>
+            </div>
+            <div class="message">
+                <p style="overflow-wrap: anywhere;">Message from the other</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <textarea name="text" id="the-message-to-send" style="resize: none;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"></textarea>
+        <button id="send-message-button">Send</button>
+    </footer>
+
+    {% if user.is_authenticate %}
+    {{ user.username}}
+    {% endif %}
+
+    <script>
+        const user_id = {{ user.id }};
+        const url = `ws://127.0.0.1:8001/websocket/${user_id}/`;
+        const chat_websocket = new WebSocket(url);
+
+        const message_area = document.getElementById('messages-area');
+
+        const message = document.getElementById('the-message-to-send');
+        const send_button = document.getElementById('send-message-button');
+        send_button.addEventListener('click', function() {
+            chat_websocket.send(`{ "type": "message", "message": "${message.value}" }`);
+
+            message_area.insertAdjacentHTML('beforeend', `
+                <section class="to">
+                    <div class="details">
+                        <p>${new Date().toISOString().split('T')[0]}</p>
+                        <div class="status">
+                            <div></div><div></div>
+                        </div>
+                        <p>${new Date().toISOString().split('T')[1].split('.')[0]}</p>
+                    </div>
+                    <div class="message">
+                        <p style="overflow-wrap: anywhere;">${message.value}</p>
+                    </div>
+                </section>
+            `);
+            
+            message.value = "";
+        });
+
+
+
+        chat_websocket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            console.log(data);
+        }
+
+    </script>
+</body>
+</html>
