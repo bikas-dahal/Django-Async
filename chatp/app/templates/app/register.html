@@ -100,6 +100,16 @@
 
     <h1>Register</h1>
 
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+            <div class="message {{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
     {% if error %}
         <p class="there_is_an_error">{{ error }}</p>
     {% endif %}

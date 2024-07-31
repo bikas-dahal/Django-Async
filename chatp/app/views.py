@@ -5,6 +5,11 @@ from django.views import View
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from .models import Message, UserChannel
+
+from django.db.models import Q
 
 
 
@@ -27,7 +32,8 @@ class Home(View):
             }
             return render(request, 'app/home.html', context=context) # redirect('home')
         
-        return redirect(request, 'app/main.html', context=context)
+        return redirect('main')
+    
     
 
 class Login(View):
@@ -49,7 +55,7 @@ class Login(View):
             user = authenticate(username=username, password=password)
             if user is not None:
                 login(request, user)
-                return redirect('chat')
+                return redirect('home')
             else:
                 messages.info(request, 'Credentials are Invalid')
                 return redirect('login')
@@ -86,9 +92,10 @@ class Register(View):
             user.save()
             
             user = authenticate(username=username, password=password)
+            print(user)
             if user is not None:
                 login(request, user)
-                redirect('chat')
+                return redirect('home')
             else:
                 messages.info(request, 'Credentials are Invalid')
                 return redirect('register')
@@ -104,11 +111,31 @@ class Chat(View):
     
     def get(self, request, id):
         user = User.objects.get(id=id)
+        
         me = request.user
         
+        messages = Message.objects.filter(
+            Q(sender=me, receiver=user) | Q(sender=user, receiver=me)
+        ).order_by('date', 'time')
+        
+        data = {
+            'type': 'receiver_function',
+            'type_of_data': 'messages',
+        }
+        
+        receiver_channel = UserChannel.objects.get(user=user)
+        
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.send)(receiver_channel.channel, data)
+        
+        unseen_message = Message.objects.filter(sender = me, receiver = user)
+        print(unseen_message)
+        unseen_message.update(has_been_seen = True)
+            
         context = {
             'user': user,
-            'me': me
+            'me': me,
+            'messages': messages
         }
         
         return render(request, 'app/chat_person.html', context)

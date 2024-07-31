@@ -18,28 +18,54 @@
     </header>
 
     <main id="messages-area">
-        <section class="to">
-            <div class="details">
-                <p>2024-01-30</p>
-                <div class="status">
-                    <div></div><div></div>
-                </div>
-                <p>10:55:02</p>
-            </div>
-            <div class="message">
-                <p style="overflow-wrap: anywhere;">Message from you</p>
-            </div>
-        </section>
 
-        <section class="from">
-            <div class="details">
-                <p>2024-01-30</p>
-                <p>10:55:02</p>
-            </div>
-            <div class="message">
-                <p style="overflow-wrap: anywhere;">Message from the other</p>
-            </div>
-        </section>
+        
+        {% for message in messages %}
+            
+            {% if message.sender == me %}
+
+            <section class="to">
+    
+                <div class="details">
+                    <p>{{message.date}}</p>
+                    {% if message.has_been_seen %}
+
+                        <div class="status seen"></div> 
+                        {% else %}
+                        <div class="status">
+                            
+                        </div>
+                    {% endif %}
+                    <div class="status">
+                        <div></div><div></div>
+                    </div>
+                    <p>{{message.time}}</p>
+                </div>
+                <div class="message">
+                    <p style="overflow-wrap: anywhere;">{{message.messages}}</p>
+                    
+                    
+                        
+                </div>
+            </section>
+
+            {% elif message.sender == user %}
+             
+            <section class="from">
+                <div class="details">
+                    <p>{{message.date}}</p>
+                    <p>{{message.time}}</p>
+                </div>
+                <div class="message">
+                    <p style="overflow-wrap: anywhere;">{{message.messages}}</p>
+                </div>
+            </section>
+                
+            {% endif %}
+                
+        {% endfor %}
+            
+
     </main>
 
     <footer>
@@ -47,13 +73,12 @@
         <button id="send-message-button">Send</button>
     </footer>
 
-    {% if user.is_authenticate %}
-    {{ user.username}}
-    {% endif %}
+
 
     <script>
         const user_id = {{ user.id }};
-        const url = `ws://127.0.0.1:8001/websocket/${user_id}/`;
+        
+        const url = `ws://localhost:8000/websocket/${user_id}/`;
         const chat_websocket = new WebSocket(url);
 
         const message_area = document.getElementById('messages-area');
@@ -61,7 +86,7 @@
         const message = document.getElementById('the-message-to-send');
         const send_button = document.getElementById('send-message-button');
         send_button.addEventListener('click', function() {
-            chat_websocket.send(`{ "type": "message", "message": "${message.value}" }`);
+            chat_websocket.send(`{ "type": "message",  "message": "${message.value}" }`);
 
             message_area.insertAdjacentHTML('beforeend', `
                 <section class="to">
@@ -84,8 +109,31 @@
 
 
         chat_websocket.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            console.log(data);
+            const received_message = JSON.parse(event.data);
+
+            if (received_message.type_of_data == "message") {
+                message_area.insertAdjacentHTML('beforeend', `
+                    <section class="from">
+                        <div class="details">
+                            <p>${new Date().toISOString().split('T')[0]}</p>
+                            <p>${new Date().toISOString().split('T')[1].split('.')[0]}</p>
+                        </div>
+                        <div class="message">
+                            <p style="overflow-wrap: anywhere;">${received_message.message}</p>
+                        </div>
+                    </section>
+                `)
+
+                chat_websocket.send(`{ "type": "message_seen" }`);
+            }
+            else if(received_message.type_of_data == 'seen') {
+                const my_message = document.getElementsByClassName('status');
+
+                for( let i = 0; i < my_message.length; i++ ) {
+                    my_message[i].classList.add('seen')
+                
+                }
+            } 
         }
 
     </script>
